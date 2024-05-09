@@ -1,0 +1,2686 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "a402162c",
+   "metadata": {
+    "papermill": {
+     "duration": 0.011406,
+     "end_time": "2024-05-09T15:19:26.161883",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:26.150477",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Название"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c300f46e",
+   "metadata": {
+    "papermill": {
+     "duration": 0.010992,
+     "end_time": "2024-05-09T15:19:26.184318",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:26.173326",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Описание проекта"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d00f0964",
+   "metadata": {
+    "papermill": {
+     "duration": 0.011094,
+     "end_time": "2024-05-09T15:19:26.207399",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:26.196305",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Обучающий датасет, валидационный датасет и base (датасет со всеми товарами) содержат индексы товаров из base, обезличенные признаки товаров и “правильные ответы” - индексы наиболее подходящих товаров-аналогов (кроме валидационного датасета - для него “правильные ответы” содержатся в отдельном файле). Обратите внимание, что данные достаточно объемные (более 2 Гб). Также существует уменьшенная (~10% от исходной) версия датасета. Можете попробовать свои силы на ней, а затем переходить к полной версии (но не обязательно, работа на уменьшенной версии также будет зачтена).\n",
+    "\n",
+    "Наша целевая метрика - accuracy@n.\n",
+    "\\В нашей задаче n = 5. Хорошо бы добиться accuracy@5 ≥ 0,7. Кстати, легко заметить, что accuracy@1 - это самая обычная accuracy.\n",
+    "\n",
+    "Попробовать запустить расчет метрики на наилучших параметрах на полной выборке (можно батчами). Написать выводы по результатам исследования.\n",
+    "\n",
+    "А что дальше? Как еще можно улучшить метрику? А что если искать не 5 ближайших соседей FAISS-ом, а, например, 20, и потом из этих 20 как-то еще выбирать 5?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "ccd20c7f",
+   "metadata": {
+    "papermill": {
+     "duration": 0.010368,
+     "end_time": "2024-05-09T15:19:26.231209",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:26.220841",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6d8dda4a",
+   "metadata": {
+    "papermill": {
+     "duration": 0.010021,
+     "end_time": "2024-05-09T15:19:26.254007",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:26.243986",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Описание данных"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "fe0676bb",
+   "metadata": {
+    "papermill": {
+     "duration": 0.009765,
+     "end_time": "2024-05-09T15:19:26.274571",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:26.264806",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "08266d87",
+   "metadata": {
+    "papermill": {
+     "duration": 0.009275,
+     "end_time": "2024-05-09T15:19:26.293504",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:26.284229",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Импорт библиотек"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "7ef95a41",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:26.313880Z",
+     "iopub.status.busy": "2024-05-09T15:19:26.313532Z",
+     "iopub.status.idle": "2024-05-09T15:19:42.685502Z",
+     "shell.execute_reply": "2024-05-09T15:19:42.683539Z"
+    },
+    "papermill": {
+     "duration": 16.385617,
+     "end_time": "2024-05-09T15:19:42.688596",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:26.302979",
+     "status": "completed"
+    },
+    "scrolled": true,
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "import warnings\n",
+    "warnings.filterwarnings('ignore')\n",
+    "#!pip -q install faiss-cpu --no-cache\n",
+    "#!apt -q install libomp-dev\n",
+    "!pip -q install faiss-gpu"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "0a28a15f",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:42.711872Z",
+     "iopub.status.busy": "2024-05-09T15:19:42.711479Z",
+     "iopub.status.idle": "2024-05-09T15:19:45.187266Z",
+     "shell.execute_reply": "2024-05-09T15:19:45.185924Z"
+    },
+    "papermill": {
+     "duration": 2.490013,
+     "end_time": "2024-05-09T15:19:45.189596",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:42.699583",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import requests\n",
+    "import zipfile\n",
+    "import faiss\n",
+    "import os\n",
+    "\n",
+    "from tqdm.notebook import tqdm\n",
+    "from urllib.parse import urlencode\n",
+    "from sklearn.utils import shuffle\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "\n",
+    "pd.options.mode.chained_assignment = None\n",
+    "pd.set_option('display.max_columns', None)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d0df3a00",
+   "metadata": {
+    "papermill": {
+     "duration": 0.010972,
+     "end_time": "2024-05-09T15:19:45.212028",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:45.201056",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Загрузка и подготовка данных"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "e62dc9e5",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:45.235751Z",
+     "iopub.status.busy": "2024-05-09T15:19:45.235151Z",
+     "iopub.status.idle": "2024-05-09T15:19:45.243681Z",
+     "shell.execute_reply": "2024-05-09T15:19:45.242200Z"
+    },
+    "papermill": {
+     "duration": 0.023592,
+     "end_time": "2024-05-09T15:19:45.246622",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:45.223030",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def downloader(size: str='small'):\n",
+    "    if size not in ['small', 'large']:\n",
+    "        raise Exception('Unknown Argument')\n",
+    "    elif size == 'small':\n",
+    "        public_key = 'https://disk.yandex.ru/d/YQElc_cNQQLSOw'\n",
+    "    else:\n",
+    "        public_key = 'https://disk.yandex.ru/d/BBEphK0EHSJ5Jw'\n",
+    "\n",
+    "    base_url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download?'\n",
+    "\n",
+    "    final_url = base_url + urlencode(dict(public_key=public_key))\n",
+    "    response = requests.get(final_url)\n",
+    "    download_url = response.json()['href']\n",
+    "\n",
+    "    download_response = requests.get(download_url)\n",
+    "    with open('/content/data.zip', 'wb') as f:\n",
+    "        f.write(download_response.content)\n",
+    "\n",
+    "    zip_path = ('/content/data.zip')\n",
+    "\n",
+    "    with zipfile.ZipFile(zip_path, 'r') as zip_ref:\n",
+    "        zip_ref.extractall()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "86facbfa",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:45.268253Z",
+     "iopub.status.busy": "2024-05-09T15:19:45.267825Z",
+     "iopub.status.idle": "2024-05-09T15:19:45.275543Z",
+     "shell.execute_reply": "2024-05-09T15:19:45.274180Z"
+    },
+    "papermill": {
+     "duration": 0.02199,
+     "end_time": "2024-05-09T15:19:45.278215",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:45.256225",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def csv_reader(size: str='small'):\n",
+    "    if size not in ['small', 'large']:\n",
+    "        raise Exception('Unknown Argument')\n",
+    "    elif size == 'small':\n",
+    "        data_base = pd.read_csv('data-small/base.csv', index_col=0)\n",
+    "        data_train = pd.read_csv('data-small/train.csv', index_col=0)\n",
+    "        data_validation = pd.read_csv('data-small/validation.csv', index_col=0)\n",
+    "        data_validation_answer = pd.read_csv('data-small/validation_answer.csv', index_col=0)\n",
+    "    else:\n",
+    "        data_base = pd.read_csv('data-large/base.csv', index_col=0)\n",
+    "        data_train = pd.read_csv('data-large/train.csv', index_col=0)\n",
+    "        data_validation = pd.read_csv('data-large/validation.csv', index_col=0)\n",
+    "        data_validation_answer = pd.read_csv('data-large/validation_answer.csv', index_col=0)\n",
+    "    return data_base, data_train, data_validation, data_validation_answer"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "43ada7ec",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:45.300092Z",
+     "iopub.status.busy": "2024-05-09T15:19:45.299699Z",
+     "iopub.status.idle": "2024-05-09T15:19:45.307333Z",
+     "shell.execute_reply": "2024-05-09T15:19:45.306184Z"
+    },
+    "papermill": {
+     "duration": 0.022072,
+     "end_time": "2024-05-09T15:19:45.309750",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:45.287678",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def csv_reader(size: str='small'):\n",
+    "    if size not in ['small', 'large']:\n",
+    "        raise Exception('Unknown Argument')\n",
+    "    elif size == 'small':\n",
+    "        data_base = pd.read_csv('/kaggle/input/15-data-workshop-2/data-small/base.csv', index_col=0)\n",
+    "        data_train = pd.read_csv('/kaggle/input/15-data-workshop-2/data-small/train.csv', index_col=0)\n",
+    "        data_validation = pd.read_csv('/kaggle/input/15-data-workshop-2/data-small/validation.csv', index_col=0)\n",
+    "        data_validation_answer = pd.read_csv('/kaggle/input/15-data-workshop-2/data-small/validation_answer.csv', index_col=0)\n",
+    "    else:\n",
+    "        data_base = pd.read_csv('/kaggle/input/15-data-workshop-2/data-large/base.csv', index_col=0)\n",
+    "        data_train = pd.read_csv('/kaggle/input/15-data-workshop-2/data-large/train.csv', index_col=0)\n",
+    "        data_validation = pd.read_csv('/kaggle/input/15-data-workshop-2/data-large/validation.csv', index_col=0)\n",
+    "        data_validation_answer = pd.read_csv('/kaggle/input/15-data-workshop-2/data-large/validation_answer.csv', index_col=0)\n",
+    "    return data_base, data_train, data_validation, data_validation_answer"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "a893295d",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:45.331930Z",
+     "iopub.status.busy": "2024-05-09T15:19:45.331538Z",
+     "iopub.status.idle": "2024-05-09T15:19:51.762980Z",
+     "shell.execute_reply": "2024-05-09T15:19:51.760137Z"
+    },
+    "papermill": {
+     "duration": 6.445351,
+     "end_time": "2024-05-09T15:19:51.765639",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:45.320288",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "data_base, data_train, data_validation, data_validation_answer = csv_reader('small')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "e7930d82",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:51.787605Z",
+     "iopub.status.busy": "2024-05-09T15:19:51.787267Z",
+     "iopub.status.idle": "2024-05-09T15:19:51.840863Z",
+     "shell.execute_reply": "2024-05-09T15:19:51.839212Z"
+    },
+    "papermill": {
+     "duration": 0.06705,
+     "end_time": "2024-05-09T15:19:51.842953",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:51.775903",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>0</th>\n",
+       "      <th>1</th>\n",
+       "      <th>2</th>\n",
+       "      <th>3</th>\n",
+       "      <th>4</th>\n",
+       "      <th>5</th>\n",
+       "      <th>6</th>\n",
+       "      <th>7</th>\n",
+       "      <th>8</th>\n",
+       "      <th>9</th>\n",
+       "      <th>10</th>\n",
+       "      <th>11</th>\n",
+       "      <th>12</th>\n",
+       "      <th>13</th>\n",
+       "      <th>14</th>\n",
+       "      <th>15</th>\n",
+       "      <th>16</th>\n",
+       "      <th>17</th>\n",
+       "      <th>18</th>\n",
+       "      <th>19</th>\n",
+       "      <th>20</th>\n",
+       "      <th>21</th>\n",
+       "      <th>22</th>\n",
+       "      <th>23</th>\n",
+       "      <th>24</th>\n",
+       "      <th>25</th>\n",
+       "      <th>26</th>\n",
+       "      <th>27</th>\n",
+       "      <th>28</th>\n",
+       "      <th>29</th>\n",
+       "      <th>30</th>\n",
+       "      <th>31</th>\n",
+       "      <th>32</th>\n",
+       "      <th>33</th>\n",
+       "      <th>34</th>\n",
+       "      <th>35</th>\n",
+       "      <th>36</th>\n",
+       "      <th>37</th>\n",
+       "      <th>38</th>\n",
+       "      <th>39</th>\n",
+       "      <th>40</th>\n",
+       "      <th>41</th>\n",
+       "      <th>42</th>\n",
+       "      <th>43</th>\n",
+       "      <th>44</th>\n",
+       "      <th>45</th>\n",
+       "      <th>46</th>\n",
+       "      <th>47</th>\n",
+       "      <th>48</th>\n",
+       "      <th>49</th>\n",
+       "      <th>50</th>\n",
+       "      <th>51</th>\n",
+       "      <th>52</th>\n",
+       "      <th>53</th>\n",
+       "      <th>54</th>\n",
+       "      <th>55</th>\n",
+       "      <th>56</th>\n",
+       "      <th>57</th>\n",
+       "      <th>58</th>\n",
+       "      <th>59</th>\n",
+       "      <th>60</th>\n",
+       "      <th>61</th>\n",
+       "      <th>62</th>\n",
+       "      <th>63</th>\n",
+       "      <th>64</th>\n",
+       "      <th>65</th>\n",
+       "      <th>66</th>\n",
+       "      <th>67</th>\n",
+       "      <th>68</th>\n",
+       "      <th>69</th>\n",
+       "      <th>70</th>\n",
+       "      <th>71</th>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Id</th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>4207931-base</th>\n",
+       "      <td>-43.946243</td>\n",
+       "      <td>15.364378</td>\n",
+       "      <td>17.515854</td>\n",
+       "      <td>-132.31146</td>\n",
+       "      <td>157.06442</td>\n",
+       "      <td>-4.069252</td>\n",
+       "      <td>-340.630860</td>\n",
+       "      <td>-57.55014</td>\n",
+       "      <td>128.398220</td>\n",
+       "      <td>45.090958</td>\n",
+       "      <td>-126.84374</td>\n",
+       "      <td>4.494522</td>\n",
+       "      <td>-99.842310</td>\n",
+       "      <td>44.926903</td>\n",
+       "      <td>177.52173</td>\n",
+       "      <td>-12.29179</td>\n",
+       "      <td>38.470360</td>\n",
+       "      <td>105.357650</td>\n",
+       "      <td>-142.46024</td>\n",
+       "      <td>-80.16326</td>\n",
+       "      <td>-110.368935</td>\n",
+       "      <td>1047.517357</td>\n",
+       "      <td>-69.594620</td>\n",
+       "      <td>66.313540</td>\n",
+       "      <td>84.873870</td>\n",
+       "      <td>813.770071</td>\n",
+       "      <td>-81.038780</td>\n",
+       "      <td>16.162964</td>\n",
+       "      <td>-98.244880</td>\n",
+       "      <td>159.53406</td>\n",
+       "      <td>27.554913</td>\n",
+       "      <td>-209.18428</td>\n",
+       "      <td>62.05977</td>\n",
+       "      <td>-529.295053</td>\n",
+       "      <td>114.59833</td>\n",
+       "      <td>90.469894</td>\n",
+       "      <td>-20.256914</td>\n",
+       "      <td>-164.76800</td>\n",
+       "      <td>-133.31387</td>\n",
+       "      <td>-41.252960</td>\n",
+       "      <td>-10.251193</td>\n",
+       "      <td>8.289038</td>\n",
+       "      <td>-131.312710</td>\n",
+       "      <td>75.70450</td>\n",
+       "      <td>-16.483078</td>\n",
+       "      <td>40.771038</td>\n",
+       "      <td>-146.09674</td>\n",
+       "      <td>-143.407680</td>\n",
+       "      <td>49.807987</td>\n",
+       "      <td>63.434480</td>\n",
+       "      <td>-30.25008</td>\n",
+       "      <td>20.470263</td>\n",
+       "      <td>78.07991</td>\n",
+       "      <td>-128.91531</td>\n",
+       "      <td>92.327680</td>\n",
+       "      <td>63.885570</td>\n",
+       "      <td>-141.17464</td>\n",
+       "      <td>142.902590</td>\n",
+       "      <td>-93.068596</td>\n",
+       "      <td>-568.421584</td>\n",
+       "      <td>-90.01869</td>\n",
+       "      <td>-129.01567</td>\n",
+       "      <td>-71.92717</td>\n",
+       "      <td>30.711966</td>\n",
+       "      <td>-90.190475</td>\n",
+       "      <td>-24.931271</td>\n",
+       "      <td>66.972534</td>\n",
+       "      <td>106.346634</td>\n",
+       "      <td>-44.270622</td>\n",
+       "      <td>155.98834</td>\n",
+       "      <td>-1074.464888</td>\n",
+       "      <td>-25.066608</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2710972-base</th>\n",
+       "      <td>-73.004890</td>\n",
+       "      <td>4.923342</td>\n",
+       "      <td>-19.750746</td>\n",
+       "      <td>-136.52908</td>\n",
+       "      <td>99.90717</td>\n",
+       "      <td>-70.709110</td>\n",
+       "      <td>-567.401996</td>\n",
+       "      <td>-128.89015</td>\n",
+       "      <td>109.914986</td>\n",
+       "      <td>201.472200</td>\n",
+       "      <td>-186.22650</td>\n",
+       "      <td>29.896042</td>\n",
+       "      <td>-99.770996</td>\n",
+       "      <td>0.126302</td>\n",
+       "      <td>136.19049</td>\n",
+       "      <td>-35.22474</td>\n",
+       "      <td>-30.321323</td>\n",
+       "      <td>-43.148834</td>\n",
+       "      <td>-162.85175</td>\n",
+       "      <td>-79.71451</td>\n",
+       "      <td>-75.784870</td>\n",
+       "      <td>1507.231274</td>\n",
+       "      <td>-69.654564</td>\n",
+       "      <td>43.640663</td>\n",
+       "      <td>-4.779669</td>\n",
+       "      <td>813.770071</td>\n",
+       "      <td>43.976913</td>\n",
+       "      <td>11.924875</td>\n",
+       "      <td>-50.228523</td>\n",
+       "      <td>166.00820</td>\n",
+       "      <td>-59.505333</td>\n",
+       "      <td>-115.33252</td>\n",
+       "      <td>72.18324</td>\n",
+       "      <td>-735.671365</td>\n",
+       "      <td>96.32230</td>\n",
+       "      <td>85.796360</td>\n",
+       "      <td>-22.030330</td>\n",
+       "      <td>-147.54501</td>\n",
+       "      <td>-108.38295</td>\n",
+       "      <td>-45.084892</td>\n",
+       "      <td>-15.004004</td>\n",
+       "      <td>-1.532826</td>\n",
+       "      <td>-46.456585</td>\n",
+       "      <td>197.57895</td>\n",
+       "      <td>-56.199876</td>\n",
+       "      <td>60.298710</td>\n",
+       "      <td>-102.65334</td>\n",
+       "      <td>-108.967964</td>\n",
+       "      <td>58.512012</td>\n",
+       "      <td>-9.678028</td>\n",
+       "      <td>-85.44830</td>\n",
+       "      <td>-68.686080</td>\n",
+       "      <td>71.59020</td>\n",
+       "      <td>-232.42569</td>\n",
+       "      <td>91.706856</td>\n",
+       "      <td>63.290657</td>\n",
+       "      <td>-137.33595</td>\n",
+       "      <td>-47.124687</td>\n",
+       "      <td>-148.057400</td>\n",
+       "      <td>-543.787056</td>\n",
+       "      <td>-160.65160</td>\n",
+       "      <td>-133.46222</td>\n",
+       "      <td>-109.04466</td>\n",
+       "      <td>20.916021</td>\n",
+       "      <td>-171.201390</td>\n",
+       "      <td>-110.596844</td>\n",
+       "      <td>67.730100</td>\n",
+       "      <td>8.909615</td>\n",
+       "      <td>-9.470253</td>\n",
+       "      <td>133.29536</td>\n",
+       "      <td>-545.897014</td>\n",
+       "      <td>-72.913230</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                      0          1          2          3          4  \\\n",
+       "Id                                                                    \n",
+       "4207931-base -43.946243  15.364378  17.515854 -132.31146  157.06442   \n",
+       "2710972-base -73.004890   4.923342 -19.750746 -136.52908   99.90717   \n",
+       "\n",
+       "                      5           6          7           8           9  \\\n",
+       "Id                                                                       \n",
+       "4207931-base  -4.069252 -340.630860  -57.55014  128.398220   45.090958   \n",
+       "2710972-base -70.709110 -567.401996 -128.89015  109.914986  201.472200   \n",
+       "\n",
+       "                     10         11         12         13         14        15  \\\n",
+       "Id                                                                              \n",
+       "4207931-base -126.84374   4.494522 -99.842310  44.926903  177.52173 -12.29179   \n",
+       "2710972-base -186.22650  29.896042 -99.770996   0.126302  136.19049 -35.22474   \n",
+       "\n",
+       "                     16          17         18        19          20  \\\n",
+       "Id                                                                     \n",
+       "4207931-base  38.470360  105.357650 -142.46024 -80.16326 -110.368935   \n",
+       "2710972-base -30.321323  -43.148834 -162.85175 -79.71451  -75.784870   \n",
+       "\n",
+       "                       21         22         23         24          25  \\\n",
+       "Id                                                                       \n",
+       "4207931-base  1047.517357 -69.594620  66.313540  84.873870  813.770071   \n",
+       "2710972-base  1507.231274 -69.654564  43.640663  -4.779669  813.770071   \n",
+       "\n",
+       "                     26         27         28         29         30  \\\n",
+       "Id                                                                    \n",
+       "4207931-base -81.038780  16.162964 -98.244880  159.53406  27.554913   \n",
+       "2710972-base  43.976913  11.924875 -50.228523  166.00820 -59.505333   \n",
+       "\n",
+       "                     31        32          33         34         35  \\\n",
+       "Id                                                                    \n",
+       "4207931-base -209.18428  62.05977 -529.295053  114.59833  90.469894   \n",
+       "2710972-base -115.33252  72.18324 -735.671365   96.32230  85.796360   \n",
+       "\n",
+       "                     36         37         38         39         40        41  \\\n",
+       "Id                                                                              \n",
+       "4207931-base -20.256914 -164.76800 -133.31387 -41.252960 -10.251193  8.289038   \n",
+       "2710972-base -22.030330 -147.54501 -108.38295 -45.084892 -15.004004 -1.532826   \n",
+       "\n",
+       "                      42         43         44         45         46  \\\n",
+       "Id                                                                     \n",
+       "4207931-base -131.312710   75.70450 -16.483078  40.771038 -146.09674   \n",
+       "2710972-base  -46.456585  197.57895 -56.199876  60.298710 -102.65334   \n",
+       "\n",
+       "                      47         48         49        50         51        52  \\\n",
+       "Id                                                                              \n",
+       "4207931-base -143.407680  49.807987  63.434480 -30.25008  20.470263  78.07991   \n",
+       "2710972-base -108.967964  58.512012  -9.678028 -85.44830 -68.686080  71.59020   \n",
+       "\n",
+       "                     53         54         55         56          57  \\\n",
+       "Id                                                                     \n",
+       "4207931-base -128.91531  92.327680  63.885570 -141.17464  142.902590   \n",
+       "2710972-base -232.42569  91.706856  63.290657 -137.33595  -47.124687   \n",
+       "\n",
+       "                      58          59         60         61         62  \\\n",
+       "Id                                                                      \n",
+       "4207931-base  -93.068596 -568.421584  -90.01869 -129.01567  -71.92717   \n",
+       "2710972-base -148.057400 -543.787056 -160.65160 -133.46222 -109.04466   \n",
+       "\n",
+       "                     63          64          65         66          67  \\\n",
+       "Id                                                                       \n",
+       "4207931-base  30.711966  -90.190475  -24.931271  66.972534  106.346634   \n",
+       "2710972-base  20.916021 -171.201390 -110.596844  67.730100    8.909615   \n",
+       "\n",
+       "                     68         69           70         71  \n",
+       "Id                                                          \n",
+       "4207931-base -44.270622  155.98834 -1074.464888 -25.066608  \n",
+       "2710972-base  -9.470253  133.29536  -545.897014 -72.913230  "
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "data_base.head(2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "58455aac",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:51.865958Z",
+     "iopub.status.busy": "2024-05-09T15:19:51.865560Z",
+     "iopub.status.idle": "2024-05-09T15:19:51.872257Z",
+     "shell.execute_reply": "2024-05-09T15:19:51.871151Z"
+    },
+    "papermill": {
+     "duration": 0.020961,
+     "end_time": "2024-05-09T15:19:51.874891",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:51.853930",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(291813, 72)"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "data_base.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "38250cf1",
+   "metadata": {
+    "papermill": {
+     "duration": 0.009946,
+     "end_time": "2024-05-09T15:19:51.895176",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:51.885230",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "17574191",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:51.917766Z",
+     "iopub.status.busy": "2024-05-09T15:19:51.917384Z",
+     "iopub.status.idle": "2024-05-09T15:19:51.964427Z",
+     "shell.execute_reply": "2024-05-09T15:19:51.963184Z"
+    },
+    "executionInfo": {
+     "elapsed": 569,
+     "status": "ok",
+     "timestamp": 1713714320039,
+     "user": {
+      "displayName": "Fedor Konovalenko",
+      "userId": "16758494924099257201"
+     },
+     "user_tz": -180
+    },
+    "id": "2578abbb",
+    "outputId": "8487cd75-0c1b-489e-f5c3-2a91cfd1c97d",
+    "papermill": {
+     "duration": 0.060407,
+     "end_time": "2024-05-09T15:19:51.966498",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:51.906091",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>0</th>\n",
+       "      <th>1</th>\n",
+       "      <th>2</th>\n",
+       "      <th>3</th>\n",
+       "      <th>4</th>\n",
+       "      <th>5</th>\n",
+       "      <th>6</th>\n",
+       "      <th>7</th>\n",
+       "      <th>8</th>\n",
+       "      <th>9</th>\n",
+       "      <th>10</th>\n",
+       "      <th>11</th>\n",
+       "      <th>12</th>\n",
+       "      <th>13</th>\n",
+       "      <th>14</th>\n",
+       "      <th>15</th>\n",
+       "      <th>16</th>\n",
+       "      <th>17</th>\n",
+       "      <th>18</th>\n",
+       "      <th>19</th>\n",
+       "      <th>20</th>\n",
+       "      <th>21</th>\n",
+       "      <th>22</th>\n",
+       "      <th>23</th>\n",
+       "      <th>24</th>\n",
+       "      <th>25</th>\n",
+       "      <th>26</th>\n",
+       "      <th>27</th>\n",
+       "      <th>28</th>\n",
+       "      <th>29</th>\n",
+       "      <th>30</th>\n",
+       "      <th>31</th>\n",
+       "      <th>32</th>\n",
+       "      <th>33</th>\n",
+       "      <th>34</th>\n",
+       "      <th>35</th>\n",
+       "      <th>36</th>\n",
+       "      <th>37</th>\n",
+       "      <th>38</th>\n",
+       "      <th>39</th>\n",
+       "      <th>40</th>\n",
+       "      <th>41</th>\n",
+       "      <th>42</th>\n",
+       "      <th>43</th>\n",
+       "      <th>44</th>\n",
+       "      <th>45</th>\n",
+       "      <th>46</th>\n",
+       "      <th>47</th>\n",
+       "      <th>48</th>\n",
+       "      <th>49</th>\n",
+       "      <th>50</th>\n",
+       "      <th>51</th>\n",
+       "      <th>52</th>\n",
+       "      <th>53</th>\n",
+       "      <th>54</th>\n",
+       "      <th>55</th>\n",
+       "      <th>56</th>\n",
+       "      <th>57</th>\n",
+       "      <th>58</th>\n",
+       "      <th>59</th>\n",
+       "      <th>60</th>\n",
+       "      <th>61</th>\n",
+       "      <th>62</th>\n",
+       "      <th>63</th>\n",
+       "      <th>64</th>\n",
+       "      <th>65</th>\n",
+       "      <th>66</th>\n",
+       "      <th>67</th>\n",
+       "      <th>68</th>\n",
+       "      <th>69</th>\n",
+       "      <th>70</th>\n",
+       "      <th>71</th>\n",
+       "      <th>Target</th>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Id</th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>109249-query</th>\n",
+       "      <td>-24.021454</td>\n",
+       "      <td>3.122524</td>\n",
+       "      <td>-80.947525</td>\n",
+       "      <td>-112.329994</td>\n",
+       "      <td>191.090180</td>\n",
+       "      <td>-66.90313</td>\n",
+       "      <td>-759.626065</td>\n",
+       "      <td>-75.284454</td>\n",
+       "      <td>120.55149</td>\n",
+       "      <td>131.13170</td>\n",
+       "      <td>-149.21106</td>\n",
+       "      <td>-102.31221</td>\n",
+       "      <td>21.387623</td>\n",
+       "      <td>11.277594</td>\n",
+       "      <td>143.22140</td>\n",
+       "      <td>-22.01157</td>\n",
+       "      <td>-3.618249</td>\n",
+       "      <td>-16.005480</td>\n",
+       "      <td>-133.38228</td>\n",
+       "      <td>-78.89356</td>\n",
+       "      <td>-65.690530</td>\n",
+       "      <td>407.773575</td>\n",
+       "      <td>-11.660624</td>\n",
+       "      <td>67.00815</td>\n",
+       "      <td>24.975033</td>\n",
+       "      <td>813.770071</td>\n",
+       "      <td>40.051064</td>\n",
+       "      <td>17.933155</td>\n",
+       "      <td>-75.435745</td>\n",
+       "      <td>149.81720</td>\n",
+       "      <td>-23.413877</td>\n",
+       "      <td>-178.09557</td>\n",
+       "      <td>133.78647</td>\n",
+       "      <td>-906.571061</td>\n",
+       "      <td>113.35556</td>\n",
+       "      <td>83.942260</td>\n",
+       "      <td>-16.592659</td>\n",
+       "      <td>-146.52074</td>\n",
+       "      <td>-120.237860</td>\n",
+       "      <td>-27.341612</td>\n",
+       "      <td>-8.845615</td>\n",
+       "      <td>1.027612</td>\n",
+       "      <td>-175.64772</td>\n",
+       "      <td>167.73582</td>\n",
+       "      <td>-32.931559</td>\n",
+       "      <td>47.860960</td>\n",
+       "      <td>-196.24750</td>\n",
+       "      <td>-118.81005</td>\n",
+       "      <td>-4.762772</td>\n",
+       "      <td>-114.877680</td>\n",
+       "      <td>37.397278</td>\n",
+       "      <td>-55.616966</td>\n",
+       "      <td>56.627056</td>\n",
+       "      <td>-108.43317</td>\n",
+       "      <td>87.372560</td>\n",
+       "      <td>76.51343</td>\n",
+       "      <td>-136.27057</td>\n",
+       "      <td>3.652915</td>\n",
+       "      <td>-164.57451</td>\n",
+       "      <td>-635.284275</td>\n",
+       "      <td>-75.647255</td>\n",
+       "      <td>-116.679340</td>\n",
+       "      <td>-41.234684</td>\n",
+       "      <td>-24.601670</td>\n",
+       "      <td>-167.760770</td>\n",
+       "      <td>133.678516</td>\n",
+       "      <td>68.184600</td>\n",
+       "      <td>26.317545</td>\n",
+       "      <td>11.938202</td>\n",
+       "      <td>148.549320</td>\n",
+       "      <td>-778.563381</td>\n",
+       "      <td>-46.877750</td>\n",
+       "      <td>66971-base</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>34137-query</th>\n",
+       "      <td>-82.033580</td>\n",
+       "      <td>8.115866</td>\n",
+       "      <td>-8.793022</td>\n",
+       "      <td>-182.972100</td>\n",
+       "      <td>56.645336</td>\n",
+       "      <td>-52.59761</td>\n",
+       "      <td>-55.720337</td>\n",
+       "      <td>130.059250</td>\n",
+       "      <td>129.38335</td>\n",
+       "      <td>76.20288</td>\n",
+       "      <td>-137.79942</td>\n",
+       "      <td>33.30165</td>\n",
+       "      <td>-2.868191</td>\n",
+       "      <td>-34.318770</td>\n",
+       "      <td>189.06479</td>\n",
+       "      <td>-19.33755</td>\n",
+       "      <td>-14.208210</td>\n",
+       "      <td>-71.110245</td>\n",
+       "      <td>-157.74814</td>\n",
+       "      <td>-78.70069</td>\n",
+       "      <td>-91.741875</td>\n",
+       "      <td>1054.205600</td>\n",
+       "      <td>-41.845630</td>\n",
+       "      <td>102.12862</td>\n",
+       "      <td>72.559050</td>\n",
+       "      <td>813.770071</td>\n",
+       "      <td>-37.957787</td>\n",
+       "      <td>17.598982</td>\n",
+       "      <td>-159.975400</td>\n",
+       "      <td>140.02528</td>\n",
+       "      <td>-8.819328</td>\n",
+       "      <td>-147.05518</td>\n",
+       "      <td>113.81987</td>\n",
+       "      <td>-529.295053</td>\n",
+       "      <td>70.67494</td>\n",
+       "      <td>55.976795</td>\n",
+       "      <td>8.817799</td>\n",
+       "      <td>-134.14812</td>\n",
+       "      <td>-73.679794</td>\n",
+       "      <td>-57.566544</td>\n",
+       "      <td>-4.338496</td>\n",
+       "      <td>-3.270682</td>\n",
+       "      <td>-144.49920</td>\n",
+       "      <td>144.65020</td>\n",
+       "      <td>-37.903276</td>\n",
+       "      <td>58.913525</td>\n",
+       "      <td>-105.36284</td>\n",
+       "      <td>-125.66783</td>\n",
+       "      <td>19.367283</td>\n",
+       "      <td>-29.087658</td>\n",
+       "      <td>-35.021350</td>\n",
+       "      <td>26.627962</td>\n",
+       "      <td>55.718437</td>\n",
+       "      <td>-110.52611</td>\n",
+       "      <td>83.513374</td>\n",
+       "      <td>75.92613</td>\n",
+       "      <td>-135.68242</td>\n",
+       "      <td>-7.429803</td>\n",
+       "      <td>-180.64502</td>\n",
+       "      <td>11.470171</td>\n",
+       "      <td>16.464691</td>\n",
+       "      <td>-121.807236</td>\n",
+       "      <td>-90.814450</td>\n",
+       "      <td>54.448433</td>\n",
+       "      <td>-120.894806</td>\n",
+       "      <td>-12.292085</td>\n",
+       "      <td>66.608116</td>\n",
+       "      <td>-27.997612</td>\n",
+       "      <td>10.091335</td>\n",
+       "      <td>95.809265</td>\n",
+       "      <td>-1022.691531</td>\n",
+       "      <td>-88.564705</td>\n",
+       "      <td>1433819-base</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                      0         1          2           3           4  \\\n",
+       "Id                                                                     \n",
+       "109249-query -24.021454  3.122524 -80.947525 -112.329994  191.090180   \n",
+       "34137-query  -82.033580  8.115866  -8.793022 -182.972100   56.645336   \n",
+       "\n",
+       "                     5           6           7          8          9  \\\n",
+       "Id                                                                     \n",
+       "109249-query -66.90313 -759.626065  -75.284454  120.55149  131.13170   \n",
+       "34137-query  -52.59761  -55.720337  130.059250  129.38335   76.20288   \n",
+       "\n",
+       "                     10         11         12         13         14        15  \\\n",
+       "Id                                                                              \n",
+       "109249-query -149.21106 -102.31221  21.387623  11.277594  143.22140 -22.01157   \n",
+       "34137-query  -137.79942   33.30165  -2.868191 -34.318770  189.06479 -19.33755   \n",
+       "\n",
+       "                     16         17         18        19         20  \\\n",
+       "Id                                                                   \n",
+       "109249-query  -3.618249 -16.005480 -133.38228 -78.89356 -65.690530   \n",
+       "34137-query  -14.208210 -71.110245 -157.74814 -78.70069 -91.741875   \n",
+       "\n",
+       "                       21         22         23         24          25  \\\n",
+       "Id                                                                       \n",
+       "109249-query   407.773575 -11.660624   67.00815  24.975033  813.770071   \n",
+       "34137-query   1054.205600 -41.845630  102.12862  72.559050  813.770071   \n",
+       "\n",
+       "                     26         27          28         29         30  \\\n",
+       "Id                                                                     \n",
+       "109249-query  40.051064  17.933155  -75.435745  149.81720 -23.413877   \n",
+       "34137-query  -37.957787  17.598982 -159.975400  140.02528  -8.819328   \n",
+       "\n",
+       "                     31         32          33         34         35  \\\n",
+       "Id                                                                     \n",
+       "109249-query -178.09557  133.78647 -906.571061  113.35556  83.942260   \n",
+       "34137-query  -147.05518  113.81987 -529.295053   70.67494  55.976795   \n",
+       "\n",
+       "                     36         37          38         39        40        41  \\\n",
+       "Id                                                                              \n",
+       "109249-query -16.592659 -146.52074 -120.237860 -27.341612 -8.845615  1.027612   \n",
+       "34137-query    8.817799 -134.14812  -73.679794 -57.566544 -4.338496 -3.270682   \n",
+       "\n",
+       "                     42         43         44         45         46  \\\n",
+       "Id                                                                    \n",
+       "109249-query -175.64772  167.73582 -32.931559  47.860960 -196.24750   \n",
+       "34137-query  -144.49920  144.65020 -37.903276  58.913525 -105.36284   \n",
+       "\n",
+       "                     47         48          49         50         51  \\\n",
+       "Id                                                                     \n",
+       "109249-query -118.81005  -4.762772 -114.877680  37.397278 -55.616966   \n",
+       "34137-query  -125.66783  19.367283  -29.087658 -35.021350  26.627962   \n",
+       "\n",
+       "                     52         53         54        55         56        57  \\\n",
+       "Id                                                                             \n",
+       "109249-query  56.627056 -108.43317  87.372560  76.51343 -136.27057  3.652915   \n",
+       "34137-query   55.718437 -110.52611  83.513374  75.92613 -135.68242 -7.429803   \n",
+       "\n",
+       "                     58          59         60          61         62  \\\n",
+       "Id                                                                      \n",
+       "109249-query -164.57451 -635.284275 -75.647255 -116.679340 -41.234684   \n",
+       "34137-query  -180.64502   11.470171  16.464691 -121.807236 -90.814450   \n",
+       "\n",
+       "                     63          64          65         66         67  \\\n",
+       "Id                                                                      \n",
+       "109249-query -24.601670 -167.760770  133.678516  68.184600  26.317545   \n",
+       "34137-query   54.448433 -120.894806  -12.292085  66.608116 -27.997612   \n",
+       "\n",
+       "                     68          69           70         71        Target  \n",
+       "Id                                                                         \n",
+       "109249-query  11.938202  148.549320  -778.563381 -46.877750    66971-base  \n",
+       "34137-query   10.091335   95.809265 -1022.691531 -88.564705  1433819-base  "
+      ]
+     },
+     "execution_count": 9,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "data_train.head(2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "60ddbad1",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:51.990571Z",
+     "iopub.status.busy": "2024-05-09T15:19:51.990191Z",
+     "iopub.status.idle": "2024-05-09T15:19:51.996811Z",
+     "shell.execute_reply": "2024-05-09T15:19:51.995471Z"
+    },
+    "executionInfo": {
+     "elapsed": 22,
+     "status": "ok",
+     "timestamp": 1713714320040,
+     "user": {
+      "displayName": "Fedor Konovalenko",
+      "userId": "16758494924099257201"
+     },
+     "user_tz": -180
+    },
+    "id": "dRatH0dkyq-j",
+    "outputId": "9e49b654-adf6-4263-b0a2-4adfb5a3284b",
+    "papermill": {
+     "duration": 0.022031,
+     "end_time": "2024-05-09T15:19:51.998970",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:51.976939",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(9999, 73)"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "data_train.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "9585e71e",
+   "metadata": {
+    "papermill": {
+     "duration": 0.010532,
+     "end_time": "2024-05-09T15:19:52.020599",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.010067",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "453b7a11",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:52.043297Z",
+     "iopub.status.busy": "2024-05-09T15:19:52.042868Z",
+     "iopub.status.idle": "2024-05-09T15:19:52.087091Z",
+     "shell.execute_reply": "2024-05-09T15:19:52.085973Z"
+    },
+    "executionInfo": {
+     "elapsed": 18,
+     "status": "ok",
+     "timestamp": 1713714320041,
+     "user": {
+      "displayName": "Fedor Konovalenko",
+      "userId": "16758494924099257201"
+     },
+     "user_tz": -180
+    },
+    "id": "tqgAbrxoxEV3",
+    "outputId": "2a4b8f76-400a-4b97-c2b1-884257290587",
+    "papermill": {
+     "duration": 0.058738,
+     "end_time": "2024-05-09T15:19:52.089734",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.030996",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>0</th>\n",
+       "      <th>1</th>\n",
+       "      <th>2</th>\n",
+       "      <th>3</th>\n",
+       "      <th>4</th>\n",
+       "      <th>5</th>\n",
+       "      <th>6</th>\n",
+       "      <th>7</th>\n",
+       "      <th>8</th>\n",
+       "      <th>9</th>\n",
+       "      <th>10</th>\n",
+       "      <th>11</th>\n",
+       "      <th>12</th>\n",
+       "      <th>13</th>\n",
+       "      <th>14</th>\n",
+       "      <th>15</th>\n",
+       "      <th>16</th>\n",
+       "      <th>17</th>\n",
+       "      <th>18</th>\n",
+       "      <th>19</th>\n",
+       "      <th>20</th>\n",
+       "      <th>21</th>\n",
+       "      <th>22</th>\n",
+       "      <th>23</th>\n",
+       "      <th>24</th>\n",
+       "      <th>25</th>\n",
+       "      <th>26</th>\n",
+       "      <th>27</th>\n",
+       "      <th>28</th>\n",
+       "      <th>29</th>\n",
+       "      <th>30</th>\n",
+       "      <th>31</th>\n",
+       "      <th>32</th>\n",
+       "      <th>33</th>\n",
+       "      <th>34</th>\n",
+       "      <th>35</th>\n",
+       "      <th>36</th>\n",
+       "      <th>37</th>\n",
+       "      <th>38</th>\n",
+       "      <th>39</th>\n",
+       "      <th>40</th>\n",
+       "      <th>41</th>\n",
+       "      <th>42</th>\n",
+       "      <th>43</th>\n",
+       "      <th>44</th>\n",
+       "      <th>45</th>\n",
+       "      <th>46</th>\n",
+       "      <th>47</th>\n",
+       "      <th>48</th>\n",
+       "      <th>49</th>\n",
+       "      <th>50</th>\n",
+       "      <th>51</th>\n",
+       "      <th>52</th>\n",
+       "      <th>53</th>\n",
+       "      <th>54</th>\n",
+       "      <th>55</th>\n",
+       "      <th>56</th>\n",
+       "      <th>57</th>\n",
+       "      <th>58</th>\n",
+       "      <th>59</th>\n",
+       "      <th>60</th>\n",
+       "      <th>61</th>\n",
+       "      <th>62</th>\n",
+       "      <th>63</th>\n",
+       "      <th>64</th>\n",
+       "      <th>65</th>\n",
+       "      <th>66</th>\n",
+       "      <th>67</th>\n",
+       "      <th>68</th>\n",
+       "      <th>69</th>\n",
+       "      <th>70</th>\n",
+       "      <th>71</th>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Id</th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>196680-query</th>\n",
+       "      <td>-59.38342</td>\n",
+       "      <td>8.563436</td>\n",
+       "      <td>-28.203072</td>\n",
+       "      <td>-134.22534</td>\n",
+       "      <td>82.73661</td>\n",
+       "      <td>-150.572170</td>\n",
+       "      <td>-129.178969</td>\n",
+       "      <td>23.670555</td>\n",
+       "      <td>125.66636</td>\n",
+       "      <td>108.809586</td>\n",
+       "      <td>-129.48387</td>\n",
+       "      <td>-178.98306</td>\n",
+       "      <td>-109.600174</td>\n",
+       "      <td>-8.799808</td>\n",
+       "      <td>172.95998</td>\n",
+       "      <td>-20.794373</td>\n",
+       "      <td>-30.065893</td>\n",
+       "      <td>-14.889741</td>\n",
+       "      <td>-213.47429</td>\n",
+       "      <td>-81.442860</td>\n",
+       "      <td>-92.558720</td>\n",
+       "      <td>1507.231274</td>\n",
+       "      <td>96.508420</td>\n",
+       "      <td>87.97525</td>\n",
+       "      <td>55.862797</td>\n",
+       "      <td>813.770071</td>\n",
+       "      <td>1.647972</td>\n",
+       "      <td>16.160482</td>\n",
+       "      <td>-77.401474</td>\n",
+       "      <td>166.08685</td>\n",
+       "      <td>-7.085945</td>\n",
+       "      <td>-114.40581</td>\n",
+       "      <td>116.564270</td>\n",
+       "      <td>-481.586956</td>\n",
+       "      <td>40.185913</td>\n",
+       "      <td>73.085365</td>\n",
+       "      <td>-37.582203</td>\n",
+       "      <td>-140.10822</td>\n",
+       "      <td>-113.26041</td>\n",
+       "      <td>-64.86323</td>\n",
+       "      <td>-16.001427</td>\n",
+       "      <td>7.223721</td>\n",
+       "      <td>-5.791832</td>\n",
+       "      <td>154.65631</td>\n",
+       "      <td>-34.690983</td>\n",
+       "      <td>52.748238</td>\n",
+       "      <td>-34.976818</td>\n",
+       "      <td>-160.459520</td>\n",
+       "      <td>-28.526081</td>\n",
+       "      <td>11.436787</td>\n",
+       "      <td>107.386640</td>\n",
+       "      <td>33.11757</td>\n",
+       "      <td>56.67899</td>\n",
+       "      <td>-43.842407</td>\n",
+       "      <td>95.18327</td>\n",
+       "      <td>51.950043</td>\n",
+       "      <td>-123.31064</td>\n",
+       "      <td>-10.645209</td>\n",
+       "      <td>-52.291348</td>\n",
+       "      <td>-525.623407</td>\n",
+       "      <td>53.718872</td>\n",
+       "      <td>-129.38846</td>\n",
+       "      <td>-103.48163</td>\n",
+       "      <td>79.564530</td>\n",
+       "      <td>-120.31357</td>\n",
+       "      <td>54.218155</td>\n",
+       "      <td>68.50073</td>\n",
+       "      <td>32.681908</td>\n",
+       "      <td>84.19686</td>\n",
+       "      <td>136.412960</td>\n",
+       "      <td>-1074.464888</td>\n",
+       "      <td>-21.233612</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>134615-query</th>\n",
+       "      <td>-103.91215</td>\n",
+       "      <td>9.742726</td>\n",
+       "      <td>-15.209915</td>\n",
+       "      <td>-116.37310</td>\n",
+       "      <td>137.69880</td>\n",
+       "      <td>-85.530075</td>\n",
+       "      <td>-776.123158</td>\n",
+       "      <td>44.481530</td>\n",
+       "      <td>114.67121</td>\n",
+       "      <td>95.231290</td>\n",
+       "      <td>-166.03618</td>\n",
+       "      <td>-66.35983</td>\n",
+       "      <td>-36.001366</td>\n",
+       "      <td>3.264235</td>\n",
+       "      <td>73.06930</td>\n",
+       "      <td>-29.384926</td>\n",
+       "      <td>22.245693</td>\n",
+       "      <td>62.498410</td>\n",
+       "      <td>-114.18031</td>\n",
+       "      <td>-80.017426</td>\n",
+       "      <td>-56.034016</td>\n",
+       "      <td>914.812090</td>\n",
+       "      <td>-23.072426</td>\n",
+       "      <td>64.59154</td>\n",
+       "      <td>47.074090</td>\n",
+       "      <td>813.770071</td>\n",
+       "      <td>1.761437</td>\n",
+       "      <td>24.459257</td>\n",
+       "      <td>-177.638370</td>\n",
+       "      <td>157.88023</td>\n",
+       "      <td>-15.648800</td>\n",
+       "      <td>-174.11716</td>\n",
+       "      <td>37.697598</td>\n",
+       "      <td>-701.605866</td>\n",
+       "      <td>18.383450</td>\n",
+       "      <td>81.502020</td>\n",
+       "      <td>22.231460</td>\n",
+       "      <td>-129.41878</td>\n",
+       "      <td>-117.69812</td>\n",
+       "      <td>-53.36446</td>\n",
+       "      <td>-4.394635</td>\n",
+       "      <td>11.108950</td>\n",
+       "      <td>-109.880050</td>\n",
+       "      <td>102.26328</td>\n",
+       "      <td>-47.268603</td>\n",
+       "      <td>52.336370</td>\n",
+       "      <td>31.617912</td>\n",
+       "      <td>13.088348</td>\n",
+       "      <td>0.388435</td>\n",
+       "      <td>-55.594444</td>\n",
+       "      <td>-37.935482</td>\n",
+       "      <td>-46.97078</td>\n",
+       "      <td>50.48210</td>\n",
+       "      <td>-132.518330</td>\n",
+       "      <td>88.67881</td>\n",
+       "      <td>81.240204</td>\n",
+       "      <td>-130.75761</td>\n",
+       "      <td>4.710941</td>\n",
+       "      <td>-114.013050</td>\n",
+       "      <td>-433.616738</td>\n",
+       "      <td>-119.455990</td>\n",
+       "      <td>-129.18834</td>\n",
+       "      <td>-51.19377</td>\n",
+       "      <td>49.299644</td>\n",
+       "      <td>-101.89454</td>\n",
+       "      <td>105.560548</td>\n",
+       "      <td>67.80104</td>\n",
+       "      <td>13.633057</td>\n",
+       "      <td>108.05138</td>\n",
+       "      <td>111.864456</td>\n",
+       "      <td>-841.022331</td>\n",
+       "      <td>-76.567980</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                      0         1          2          3          4  \\\n",
+       "Id                                                                   \n",
+       "196680-query  -59.38342  8.563436 -28.203072 -134.22534   82.73661   \n",
+       "134615-query -103.91215  9.742726 -15.209915 -116.37310  137.69880   \n",
+       "\n",
+       "                       5           6          7          8           9  \\\n",
+       "Id                                                                       \n",
+       "196680-query -150.572170 -129.178969  23.670555  125.66636  108.809586   \n",
+       "134615-query  -85.530075 -776.123158  44.481530  114.67121   95.231290   \n",
+       "\n",
+       "                     10         11          12        13         14  \\\n",
+       "Id                                                                    \n",
+       "196680-query -129.48387 -178.98306 -109.600174 -8.799808  172.95998   \n",
+       "134615-query -166.03618  -66.35983  -36.001366  3.264235   73.06930   \n",
+       "\n",
+       "                     15         16         17         18         19  \\\n",
+       "Id                                                                    \n",
+       "196680-query -20.794373 -30.065893 -14.889741 -213.47429 -81.442860   \n",
+       "134615-query -29.384926  22.245693  62.498410 -114.18031 -80.017426   \n",
+       "\n",
+       "                     20           21         22        23         24  \\\n",
+       "Id                                                                     \n",
+       "196680-query -92.558720  1507.231274  96.508420  87.97525  55.862797   \n",
+       "134615-query -56.034016   914.812090 -23.072426  64.59154  47.074090   \n",
+       "\n",
+       "                      25        26         27          28         29  \\\n",
+       "Id                                                                     \n",
+       "196680-query  813.770071  1.647972  16.160482  -77.401474  166.08685   \n",
+       "134615-query  813.770071  1.761437  24.459257 -177.638370  157.88023   \n",
+       "\n",
+       "                     30         31          32          33         34  \\\n",
+       "Id                                                                      \n",
+       "196680-query  -7.085945 -114.40581  116.564270 -481.586956  40.185913   \n",
+       "134615-query -15.648800 -174.11716   37.697598 -701.605866  18.383450   \n",
+       "\n",
+       "                     35         36         37         38        39         40  \\\n",
+       "Id                                                                              \n",
+       "196680-query  73.085365 -37.582203 -140.10822 -113.26041 -64.86323 -16.001427   \n",
+       "134615-query  81.502020  22.231460 -129.41878 -117.69812 -53.36446  -4.394635   \n",
+       "\n",
+       "                     41          42         43         44         45  \\\n",
+       "Id                                                                     \n",
+       "196680-query   7.223721   -5.791832  154.65631 -34.690983  52.748238   \n",
+       "134615-query  11.108950 -109.880050  102.26328 -47.268603  52.336370   \n",
+       "\n",
+       "                     46          47         48         49          50  \\\n",
+       "Id                                                                      \n",
+       "196680-query -34.976818 -160.459520 -28.526081  11.436787  107.386640   \n",
+       "134615-query  31.617912   13.088348   0.388435 -55.594444  -37.935482   \n",
+       "\n",
+       "                    51        52          53        54         55         56  \\\n",
+       "Id                                                                             \n",
+       "196680-query  33.11757  56.67899  -43.842407  95.18327  51.950043 -123.31064   \n",
+       "134615-query -46.97078  50.48210 -132.518330  88.67881  81.240204 -130.75761   \n",
+       "\n",
+       "                     57          58          59          60         61  \\\n",
+       "Id                                                                       \n",
+       "196680-query -10.645209  -52.291348 -525.623407   53.718872 -129.38846   \n",
+       "134615-query   4.710941 -114.013050 -433.616738 -119.455990 -129.18834   \n",
+       "\n",
+       "                     62         63         64          65        66  \\\n",
+       "Id                                                                    \n",
+       "196680-query -103.48163  79.564530 -120.31357   54.218155  68.50073   \n",
+       "134615-query  -51.19377  49.299644 -101.89454  105.560548  67.80104   \n",
+       "\n",
+       "                     67         68          69           70         71  \n",
+       "Id                                                                      \n",
+       "196680-query  32.681908   84.19686  136.412960 -1074.464888 -21.233612  \n",
+       "134615-query  13.633057  108.05138  111.864456  -841.022331 -76.567980  "
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "data_validation.head(2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "c8896bc4",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:52.177763Z",
+     "iopub.status.busy": "2024-05-09T15:19:52.177415Z",
+     "iopub.status.idle": "2024-05-09T15:19:52.184582Z",
+     "shell.execute_reply": "2024-05-09T15:19:52.183312Z"
+    },
+    "papermill": {
+     "duration": 0.086389,
+     "end_time": "2024-05-09T15:19:52.187406",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.101017",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(10000, 72)"
+      ]
+     },
+     "execution_count": 12,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "data_validation.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "95ca360d",
+   "metadata": {
+    "papermill": {
+     "duration": 0.011364,
+     "end_time": "2024-05-09T15:19:52.211041",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.199677",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "2c7a4a7d",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:52.235527Z",
+     "iopub.status.busy": "2024-05-09T15:19:52.235087Z",
+     "iopub.status.idle": "2024-05-09T15:19:52.244778Z",
+     "shell.execute_reply": "2024-05-09T15:19:52.243600Z"
+    },
+    "papermill": {
+     "duration": 0.024607,
+     "end_time": "2024-05-09T15:19:52.247190",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.222583",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Expected</th>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>Id</th>\n",
+       "      <th></th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>196680-query</th>\n",
+       "      <td>1087368-base</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>134615-query</th>\n",
+       "      <td>849674-base</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                  Expected\n",
+       "Id                        \n",
+       "196680-query  1087368-base\n",
+       "134615-query   849674-base"
+      ]
+     },
+     "execution_count": 13,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "data_validation_answer.head(2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "ee3df0f2",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:52.272488Z",
+     "iopub.status.busy": "2024-05-09T15:19:52.272122Z",
+     "iopub.status.idle": "2024-05-09T15:19:52.278300Z",
+     "shell.execute_reply": "2024-05-09T15:19:52.277175Z"
+    },
+    "papermill": {
+     "duration": 0.021504,
+     "end_time": "2024-05-09T15:19:52.280906",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.259402",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(10000, 1)"
+      ]
+     },
+     "execution_count": 14,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "data_validation_answer.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "d45f7ca2",
+   "metadata": {
+    "papermill": {
+     "duration": 0.011496,
+     "end_time": "2024-05-09T15:19:52.305013",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.293517",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "id": "165a6211",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:52.329649Z",
+     "iopub.status.busy": "2024-05-09T15:19:52.329290Z",
+     "iopub.status.idle": "2024-05-09T15:19:52.334358Z",
+     "shell.execute_reply": "2024-05-09T15:19:52.332890Z"
+    },
+    "papermill": {
+     "duration": 0.02033,
+     "end_time": "2024-05-09T15:19:52.336876",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.316546",
+     "status": "completed"
+    },
+    "scrolled": true,
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "#data_base.corr().style.highlight_between(\n",
+    "#   left=0.1, right=0.99, axis=1, color='#c3ffc3').highlight_between(left=-0.99, right=-0.1, axis=1, color='#ffc2c2')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "70d5b611",
+   "metadata": {
+    "papermill": {
+     "duration": 0.011556,
+     "end_time": "2024-05-09T15:19:52.360968",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.349412",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "id": "d6a963bf",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:52.389118Z",
+     "iopub.status.busy": "2024-05-09T15:19:52.388740Z",
+     "iopub.status.idle": "2024-05-09T15:19:52.394247Z",
+     "shell.execute_reply": "2024-05-09T15:19:52.393197Z"
+    },
+    "papermill": {
+     "duration": 0.023464,
+     "end_time": "2024-05-09T15:19:52.397061",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.373597",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "#import requests\n",
+    "#from urllib.parse import urlencode\n",
+    "\n",
+    "#base_url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download?'\n",
+    "#public_key = 'https://disk.yandex.ru/d/YQElc_cNQQLSOw'  # Сюда вписываете вашу ссылку\n",
+    "\n",
+    "# Получаем загрузочную ссылку\n",
+    "#final_url = base_url + urlencode(dict(public_key=public_key))\n",
+    "#response = requests.get(final_url)\n",
+    "#download_url = response.json()['href']\n",
+    "\n",
+    "# Загружаем файл и сохраняем его\n",
+    "#download_response = requests.get(download_url)\n",
+    "#with open('downloaded_file.txt', 'wb') as f:   # Здесь укажите нужный путь к файлу\n",
+    "    #f.write(download_response.content)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "1d32902f",
+   "metadata": {
+    "papermill": {
+     "duration": 0.013523,
+     "end_time": "2024-05-09T15:19:52.422932",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.409409",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0be85424",
+   "metadata": {
+    "papermill": {
+     "duration": 0.012407,
+     "end_time": "2024-05-09T15:19:52.449715",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.437308",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "### **Вывод:**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "2c92fc63",
+   "metadata": {
+    "papermill": {
+     "duration": 0.013022,
+     "end_time": "2024-05-09T15:19:52.475659",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.462637",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "48eba34d",
+   "metadata": {
+    "papermill": {
+     "duration": 0.013011,
+     "end_time": "2024-05-09T15:19:52.500976",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.487965",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Обработка данных"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b19864d0",
+   "metadata": {
+    "papermill": {
+     "duration": 0.013687,
+     "end_time": "2024-05-09T15:19:52.527904",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.514217",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Несмотря на то, что данные обезличены, EDA здесь также будет полезен: все ли столбцы имеют одинаковое распределение значений? Есть ли столбцы, которые для модели были бы мало полезны? Есть ли сильно скоррелированные друг с другом столбцы? Может быть, есть смысл на первом этапе подавать в модель не все фичи, а наиболее информативные? Есть ли пропуски? Явные дубликаты? Если есть - что с ними делать? Есть ли аномалии в распределениях? Следующий важный вопрос - не требуется ли масштабирование данных? Ответить на этот вопрос можно, например, замерив метрику с масштабированием и без масштабирования признаков."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "9b0a86a1",
+   "metadata": {
+    "papermill": {
+     "duration": 0.012563,
+     "end_time": "2024-05-09T15:19:52.553720",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.541157",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "82512955",
+   "metadata": {
+    "papermill": {
+     "duration": 0.013729,
+     "end_time": "2024-05-09T15:19:52.581361",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.567632",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "### **Вывод:**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "7f84261c",
+   "metadata": {
+    "papermill": {
+     "duration": 0.0117,
+     "end_time": "2024-05-09T15:19:52.606486",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.594786",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a34cc20f",
+   "metadata": {
+    "papermill": {
+     "duration": 0.01186,
+     "end_time": "2024-05-09T15:19:52.630319",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.618459",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## Разработка модели машинного обучения"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "fd5ff0ea",
+   "metadata": {
+    "papermill": {
+     "duration": 0.012515,
+     "end_time": "2024-05-09T15:19:52.655324",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.642809",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "89c6eaf0",
+   "metadata": {
+    "id": "d9305a09",
+    "papermill": {
+     "duration": 0.013836,
+     "end_time": "2024-05-09T15:19:52.681141",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.667305",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## 📊 Create FAISS [index](https://github.com/facebookresearch/faiss/wiki/Faiss-indexes) for small dataset\n",
+    "\n",
+    "\n",
+    "[Guideline](https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index)\n",
+    "\n",
+    "Hint: Use numpy [ascontigiousarray](https://numpy.org/doc/stable/reference/generated/numpy.ascontiguousarray.html) - object which is stored in one [unbroken block](https://www.educative.io/answers/what-is-the-numpyascontiguousarray-function-in-python) in memory -  to load vectors in FAISS\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c4213cf6",
+   "metadata": {
+    "papermill": {
+     "duration": 0.012671,
+     "end_time": "2024-05-09T15:19:52.706093",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.693422",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "id": "6f9aa09a",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:52.732797Z",
+     "iopub.status.busy": "2024-05-09T15:19:52.732434Z",
+     "iopub.status.idle": "2024-05-09T15:19:52.737233Z",
+     "shell.execute_reply": "2024-05-09T15:19:52.736201Z"
+    },
+    "papermill": {
+     "duration": 0.022047,
+     "end_time": "2024-05-09T15:19:52.740050",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.718003",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "#data_base = data_base[:5]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "7afc09ca",
+   "metadata": {
+    "papermill": {
+     "duration": 0.012013,
+     "end_time": "2024-05-09T15:19:52.764775",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.752762",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "id": "bfdb5cad",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:52.794779Z",
+     "iopub.status.busy": "2024-05-09T15:19:52.794413Z",
+     "iopub.status.idle": "2024-05-09T15:19:52.801546Z",
+     "shell.execute_reply": "2024-05-09T15:19:52.799723Z"
+    },
+    "id": "d7f11c9c",
+    "papermill": {
+     "duration": 0.02488,
+     "end_time": "2024-05-09T15:19:52.804529",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.779649",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "dims = data_base.shape[1]\n",
+    "n_cells = 20\n",
+    "quantizer = faiss.IndexFlatL2(dims)\n",
+    "idx_l2 = faiss.IndexIVFFlat(quantizer, dims, n_cells)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "id": "cc13a0e7",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:52.832199Z",
+     "iopub.status.busy": "2024-05-09T15:19:52.831846Z",
+     "iopub.status.idle": "2024-05-09T15:19:53.118515Z",
+     "shell.execute_reply": "2024-05-09T15:19:53.117230Z"
+    },
+    "executionInfo": {
+     "elapsed": 384,
+     "status": "ok",
+     "timestamp": 1713714320413,
+     "user": {
+      "displayName": "Fedor Konovalenko",
+      "userId": "16758494924099257201"
+     },
+     "user_tz": -180
+    },
+    "id": "da628843",
+    "outputId": "370f994e-4916-4463-fd03-ddf5325c99fe",
+    "papermill": {
+     "duration": 0.304394,
+     "end_time": "2024-05-09T15:19:53.121841",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:52.817447",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 533 ms, sys: 85.1 ms, total: 618 ms\n",
+      "Wall time: 278 ms\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "idx_l2.train(np.ascontiguousarray(data_base.values).astype('float32'))\n",
+    "idx_l2.add(np.ascontiguousarray(data_base.values).astype('float32'))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "id": "cf7e33e2",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:53.153661Z",
+     "iopub.status.busy": "2024-05-09T15:19:53.153198Z",
+     "iopub.status.idle": "2024-05-09T15:19:53.208811Z",
+     "shell.execute_reply": "2024-05-09T15:19:53.207737Z"
+    },
+    "id": "24d2da03",
+    "papermill": {
+     "duration": 0.077778,
+     "end_time": "2024-05-09T15:19:53.211956",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:53.134178",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "base_index = {k: v for k, v in enumerate(data_base.index.to_list())}"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c1cee196",
+   "metadata": {
+    "id": "63e85826",
+    "papermill": {
+     "duration": 0.011603,
+     "end_time": "2024-05-09T15:19:53.236557",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:53.224954",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## 🔍 Search"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "id": "0f68a3ac",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:53.264328Z",
+     "iopub.status.busy": "2024-05-09T15:19:53.263911Z",
+     "iopub.status.idle": "2024-05-09T15:19:53.270841Z",
+     "shell.execute_reply": "2024-05-09T15:19:53.269351Z"
+    },
+    "id": "2d676723",
+    "papermill": {
+     "duration": 0.023338,
+     "end_time": "2024-05-09T15:19:53.272923",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:53.249585",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "targets = data_train[\"Target\"]\n",
+    "data_train.drop(\"Target\", axis=1, inplace=True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "id": "8a6c1784",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:53.298682Z",
+     "iopub.status.busy": "2024-05-09T15:19:53.298278Z",
+     "iopub.status.idle": "2024-05-09T15:19:56.177844Z",
+     "shell.execute_reply": "2024-05-09T15:19:56.176832Z"
+    },
+    "executionInfo": {
+     "elapsed": 11367,
+     "status": "ok",
+     "timestamp": 1713714331766,
+     "user": {
+      "displayName": "Fedor Konovalenko",
+      "userId": "16758494924099257201"
+     },
+     "user_tz": -180
+    },
+    "id": "58687164",
+    "outputId": "aab7d99d-04c8-4db0-8898-e09ab7549af7",
+    "papermill": {
+     "duration": 2.895017,
+     "end_time": "2024-05-09T15:19:56.179998",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:53.284981",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 11.4 s, sys: 3.8 ms, total: 11.4 s\n",
+      "Wall time: 2.87 s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "candidate_number = 5\n",
+    "r, idx = idx_l2.search(np.ascontiguousarray(data_train.values).astype('float32'), candidate_number)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a8b1b0e2",
+   "metadata": {
+    "id": "6oTsyywV0df5",
+    "papermill": {
+     "duration": 0.012046,
+     "end_time": "2024-05-09T15:19:56.204058",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:56.192012",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## 📈 Accuracy@candidate_number calculation"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "id": "4cb387e1",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-05-09T15:19:56.229476Z",
+     "iopub.status.busy": "2024-05-09T15:19:56.229130Z",
+     "iopub.status.idle": "2024-05-09T15:19:56.279846Z",
+     "shell.execute_reply": "2024-05-09T15:19:56.278662Z"
+    },
+    "executionInfo": {
+     "elapsed": 27,
+     "status": "ok",
+     "timestamp": 1713714331767,
+     "user": {
+      "displayName": "Fedor Konovalenko",
+      "userId": "16758494924099257201"
+     },
+     "user_tz": -180
+    },
+    "id": "103aa9d5",
+    "outputId": "7820df6a-44b6-42cb-90d4-8b00782c2bc9",
+    "papermill": {
+     "duration": 0.065967,
+     "end_time": "2024-05-09T15:19:56.281865",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:56.215898",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy @ 5 = 11.5%\n"
+     ]
+    }
+   ],
+   "source": [
+    "acc = 0\n",
+    "for target, el in zip(targets.values.tolist(), idx.tolist()):\n",
+    "    acc += int(target in [base_index[r] for r in el])\n",
+    "print(f'Accuracy @ {candidate_number} = {acc / len(idx):.1%}')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6916a048",
+   "metadata": {
+    "id": "KAhyHx--0syP",
+    "papermill": {
+     "duration": 0.011931,
+     "end_time": "2024-05-09T15:19:56.305942",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:56.294011",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## ❓❓❓ What's next?\n",
+    "\n",
+    "For full dataset it is strongly recommended to test your code on the small batch before loading all dataset to FAISS\n",
+    "\n",
+    "You can make your own research:\n",
+    "- change number of cells\n",
+    "- change number of candidates\n",
+    "- change indexes\n",
+    "- add another ML models to improve the FAISS result\n",
+    "- change the accelerator: Hint: Search method on GPU differs a bit from the similar method on CPU\n",
+    "-.....\n",
+    "\n",
+    "Remember, that in Colab you have only 12 GB of RAM, so remove variables and objects if necessary\n",
+    "\n",
+    "**Good Luck!**"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c415432a",
+   "metadata": {
+    "papermill": {
+     "duration": 0.011258,
+     "end_time": "2024-05-09T15:19:56.329072",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:56.317814",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "### **Вывод:**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "2ebe14fa",
+   "metadata": {
+    "papermill": {
+     "duration": 0.011819,
+     "end_time": "2024-05-09T15:19:56.353247",
+     "exception": false,
+     "start_time": "2024-05-09T15:19:56.341428",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "none",
+   "dataSources": [
+    {
+     "datasetId": 4973916,
+     "sourceId": 8367352,
+     "sourceType": "datasetVersion"
+    }
+   ],
+   "dockerImageVersionId": 30698,
+   "isGpuEnabled": false,
+   "isInternetEnabled": true,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.10.13"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 33.668751,
+   "end_time": "2024-05-09T15:19:57.088629",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2024-05-09T15:19:23.419878",
+   "version": "2.5.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
